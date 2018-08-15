@@ -135,7 +135,10 @@ namespace hpp {
         bool addEffectorTrajectory(const size_t pathId, const std::string& effectorName, const std::vector<bezier_Ptr>& trajectories);
         bool getEffectorsTrajectories(const size_t pathId,EffectorTrajectoriesMap_t& result);
         bool getEffectorTrajectory(const size_t pathId,const std::string& effectorName,std::vector<bezier_Ptr>& result);
-
+        const model::Configuration_t getInitRefConfig();  //AOrgen
+        void setInitRefConfig(const model::Configuration_t& q_init);  //AOrgen
+        const model::Configuration_t get_OO_RefConfig();  //AOrgen
+        void set_OO_RefConfig(const model::Configuration_t&);  //AOrgen
     private:
         core::CollisionValidationPtr_t collisionValidation_;
         std::map<std::string, core::CollisionValidationPtr_t> limbcollisionValidations_;
@@ -145,6 +148,8 @@ namespace hpp {
         sampling::HeuristicFactory factory_;
         bool staticStability_;
         double mu_;
+        model::Configuration_t initRefConfig_; //AOrgen
+        model::Configuration_t ref_OO_Config_; //AOrgen
         std::map<size_t,EffectorTrajectoriesMap_t> effectorsTrajectoriesMaps_; // the map link the pathIndex (the same as in the wholeBody paths in problem solver) to a map of trajectories for each effectors.
     private:
         void AddLimbPrivate(rbprm::RbPrmLimbPtr_t limb, const std::string& id, const std::string& name,

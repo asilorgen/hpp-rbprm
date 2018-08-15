@@ -31,9 +31,9 @@ std::size_t ComputeLength(const model::JointPtr_t limb, const model::JointPtr_t 
     std::size_t start = limb->rankInConfiguration();
     std::size_t end = effector->rankInConfiguration()
             + effector->neutralConfiguration().rows();
-    hppDout(notice, "startIndex DIKKAT!!" << start);
-    hppDout(notice, "endIndex DIKKAT!!" << end);
-    hppDout(notice, "length !!" << (end - start + 1));
+    //hppDout(notice, "startIndex DIKKAT!!" << start);  //AOrgen
+    //hppDout(notice, "endIndex DIKKAT!!" << end);
+    //hppDout(notice, "length !!" << (end - start + 1));
     return end - start + 1;
 }
 

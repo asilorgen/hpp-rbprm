@@ -109,11 +109,35 @@ double RandomHeuristic(const sampling::Sample& /*sample*/,
 double ForwardHeuristic(const sampling::Sample& sample,
                       const Eigen::Vector3d& direction, const Eigen::Vector3d& normal, const HeuristicParam & /*params*/)
 {
- /*   //hppDout(notice,"static value : "<<sample.staticValue_);
-  hppDout(notice,"eff position = "<<sample.effectorPosition_);
-  hppDout(notice,"limb frame   = "<<sample.effectorPositionInLimbFrame_);
-  hppDout(notice,"direction    = "<<direction);*/
-    return sample.staticValue_ * 1000.  * Eigen::Vector3d::UnitZ().dot(normal) + 100. * sample.effectorPositionInLimbFrame_.dot(fcl::Vec3f(direction(0),direction(1),sample.effectorPositionInLimbFrame_[2])) + ((double)rand()) / ((double)(RAND_MAX));
+/*  hppDout(notice,"FORWARD H. static value : "<<sample.staticValue_);
+  hppDout(notice,"FORWARD H. eff position = "<<sample.effectorPosition_);
+  hppDout(notice,"FORWARD H. limb frame   = "<<sample.effectorPositionInLimbFrame_);
+  hppDout(notice,"FORWARD H. direction    = "<<direction);
+  hppDout(notice,"FORWARD H. normal    = "<< normal);
+  hppDout(notice,"FORWARD H. unitZ.dot normal = " << Eigen::Vector3d::UnitZ().dot(normal));
+  hppDout(notice,"FORWARD H. returned direction: "<<sample.effectorPositionInLimbFrame_.dot(fcl::Vec3f(direction(0),direction(1),sample.effectorPositionInLimbFrame_[2])));
+*/
+    return sample.staticValue_ * 1000.  * Eigen::Vector3d::UnitZ().dot(normal) + 100. * sample.effectorPositionInLimbFrame_.dot(fcl::Vec3f(direction(0),direction(1),sample.effectorPositionInLimbFrame_[2]));
+}
+
+//AOrgen
+double static_distance_forward(const sampling::Sample& sample,
+                             const Eigen::Vector3d& direction, const Eigen::Vector3d& normal, const HeuristicParam & /*params*/){
+
+    if(Eigen::Vector3d::UnitZ().dot(normal) < 0.7) return -1.0;
+    double result = 150. * sample.effectorPositionInLimbFrame_.dot(fcl::Vec3f(direction(0),direction(1),sample.effectorPositionInLimbFrame_[2])); //Forward
+    result += 1000. * sample.staticValue_ * Eigen::Vector3d::UnitZ().dot(normal); //Static
+    double distance = sample.effectorPositionInLimbFrame_.norm(); //Distance (THIS SHOULD BE REVERSE THIS IS HEURISTIC!!)
+
+    hppDout(notice, "HEURISTIC eff pos in limb: " << sample.effectorPositionInLimbFrame_);
+    hppDout(notice, "HEURISTIC eff distance: " << distance);
+    hppDout(notice, "HEURISTIC 1) forward: " << 150. * sample.effectorPositionInLimbFrame_.dot(fcl::Vec3f(direction(0),direction(1),sample.effectorPositionInLimbFrame_[2])));
+    hppDout(notice, "HEURISTIC 2) Static: " << 1000. * sample.staticValue_ * Eigen::Vector3d::UnitZ().dot(normal));
+    hppDout(notice, "HEURISTIC 3) Distance Heu: " << (300 * (1-distance)*(1-distance)*(1-distance)));
+
+    result += (300 * (1-distance)*(1-distance)*(1-distance)); //Distance (Exponential needed!!)
+
+    return result;
 }
 
 double DynamicWalkHeuristic(const sampling::Sample& sample,
@@ -228,7 +252,7 @@ double BackwardHeuristic(const sampling::Sample& sample,
 }
 
 double StaticHeuristic(const sampling::Sample& sample,
-                      const Eigen::Vector3d& /*direction*/, const Eigen::Vector3d& /*normal*/, const HeuristicParam & /*params*/)
+                      const Eigen::Vector3d& /*direction*/, const Eigen::Vector3d& normal, const HeuristicParam & /*params*/)
 {
     /*hppDout(info,"sample : ");
     hppDout(info,"sample : "<<&sample);
@@ -239,7 +263,7 @@ double StaticHeuristic(const sampling::Sample& sample,
     hppDout(info,"configuration = "<<sample.configuration_);
     hppDout(info,"staticValue = "<<sample.staticValue_);
     */
-    return sample.staticValue_;
+    return sample.staticValue_ * 1000.  * Eigen::Vector3d::UnitZ().dot(normal);
 
 }
 
@@ -336,6 +360,7 @@ HeuristicFactory::HeuristicFactory()
     heuristics_.insert(std::make_pair("fixedStep1", &fixedStep1Heuristic));
     heuristics_.insert(std::make_pair("fixedStep08", &fixedStep08Heuristic));
     heuristics_.insert(std::make_pair("fixedStep06", &fixedStep06Heuristic));
+    heuristics_.insert(std::make_pair("staticDistanceForward", &static_distance_forward));
 }
 
 HeuristicFactory::~HeuristicFactory(){}

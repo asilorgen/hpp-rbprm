@@ -261,8 +261,23 @@ namespace hpp {
             lit->second->effectorReferencePosition_ = tJoint_robot.getTranslation();
         }
     }
+    //AOrgen
+    const model::Configuration_t RbPrmFullBody::getInitRefConfig(){
+        return initRefConfig_;
+    }
+    //AOrgen
+    void RbPrmFullBody::setInitRefConfig(const model::Configuration_t& q_init){
+        initRefConfig_ = q_init;
+    }
 
-
+    //AOrgen
+    const model::Configuration_t RbPrmFullBody::get_OO_RefConfig(){
+        return ref_OO_Config_;
+    }
+    //AOrgen
+    void RbPrmFullBody::set_OO_RefConfig(const model::Configuration_t& q_OO){
+        ref_OO_Config_ = q_OO;
+    }
 
 
     void RbPrmFullBody::init(const RbPrmFullBodyWkPtr_t& weakPtr)

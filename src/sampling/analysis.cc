@@ -311,8 +311,15 @@ namespace
       return 100-(sqrt(distance));
     }
 
-
-
+    Configuration_t& convertPosAngle(Configuration_t refConfig){
+        hppDout(notice, "size of ref cofig: " << refConfig.size());
+        for(int i=7; i < refConfig.size(); i++){               //only looking joint angles
+            if (refConfig[i] < 0){
+                refConfig[i] = refConfig[i] + 6.28319; //Add 360 degree to make it positive angle
+            }
+        }
+        return refConfig;
+    }
 
     double trotReference(rbprm::RbPrmFullBodyPtr_t fullBody , const SampleDB& /*sampleDB*/, const sampling::Sample& sample){
       // find limb name
@@ -321,15 +328,35 @@ namespace
       model::Configuration_t conf(device->currentConfiguration());
       sampling::Load(sample,conf); // retrieve the configuration of the sample (only for the concerned limb)
 
+      Configuration_t referenceConf = fullBody->getInitRefConfig();   //USE THIS!!!
+      Configuration_t norRefConf = convertPosAngle(referenceConf);
+      Configuration_t norSampleConf = convertPosAngle(conf);
+
+  /*    //Effector position
+      device->computeForwardKinematics();
+      State state;
+      state.configuration_ = sample.configuration_;
+      state.contacts_[limb->effector_->name()] = true;
+      const fcl::Vec3f position = limb->effector_->currentTransformation().getTranslation();
+      state.contactPositions_[limb->effector_->name()] = position;
+      state.contactNormals_[limb->effector_->name()] = fcl::Vec3f(0,0,1);
+      state.contactRotation_[limb->effector_->name()] = limb->effector_->currentTransformation().getRotation();
+      std::vector<fcl::Vec3f> effectorPos = (computeRectangleContact(fullBody, state));
+  */
+      hppDout(notice, "Reference Config ASIL CHECK not normalize yet!: " << referenceConf);
+      hppDout(notice, "Reference Config ASIL CHECK NORMALIZED!: " << norRefConf);
+      hppDout(notice, "Retrived config normalized ASIL CHECK!: " << norSampleConf);
+      hppDout(notice, "sample Config ASIL CHECK: " << sample.configuration_);
+
       double distance = 0;
       Configuration_t diff(device->numberDof());
 
-      hppDout(notice,"numberDof= " << device->numberDof()); //AOrgen
+      //hppDout(notice,"numberDof= " << device->numberDof()); //AOrgen
 
       Configuration_t weight = Configuration_t::Zero(limb->effector_->rankInVelocity() - limb->limb_->rankInVelocity()+1);
-
+/*
       hppDout(notice,"weight(number of joint in limb)=" << weight); //AOrgen
-
+*/
 
       // compute default weight vector : (TODO add an API to set custom weight vector)
       // FIXME : lot of assumptions are made here, but they are true for the most common robots used
@@ -343,21 +370,24 @@ namespace
       // x : only used for less common behaviour like straffing, high weight
       // prismatic joint ?? high weight
       size_t i_weight = 0;
+
       hppDout(notice,"effector : "<<limb->effector_->name());
-      hppDout(notice,"effector id vel= "<<limb->effector_->rankInVelocity());
+/*    hppDout(notice,"effector id vel= "<<limb->effector_->rankInVelocity());
       hppDout(notice,"effector id pos= "<<limb->effector_->rankInConfiguration());
       hppDout(notice,"joint at effector id vel : "<<device->getJointAtVelocityRank(limb->effector_->rankInVelocity())->name());
       hppDout(notice,"joint at effector id pos : "<<device->getJointAtConfigRank(limb->effector_->rankInConfiguration())->name());
 
       hppDout(notice,"limb     id vel= "<<limb->limb_->rankInVelocity());
       hppDout(notice,"limb     id pos= "<<limb->limb_->rankInConfiguration());
-
+*/
       for (size_t i = limb->limb_->rankInVelocity() ; i <= limb->effector_->rankInVelocity() ; ++i){
           model::vector_t jointJacobian= device->getJointAtVelocityRank(i)->jacobian().block<6,1>(0,i).transpose();
-          hppDout(notice,"Jacobian of joint "<<device->getJointAtVelocityRank(i)->name()<<" at id = "<<i);
-          hppDout(notice,"joint column : \n"<<jointJacobian);
-          if(fabs(jointJacobian[4]) > 0.5){ // rot y
-            weight[i_weight]=1;
+        //  hppDout(notice,"Jacobian of joint "<<device->getJointAtVelocityRank(i)->name()<<" at id = "<<i);
+        //  hppDout(notice,"joint column : \n"<<jointJacobian);
+          if((fabs(jointJacobian[4]) > 0.5) && (i == limb->effector_->rankInVelocity())){
+            weight[i_weight]=50.;      // rot y but last joint!
+          }else if(fabs(jointJacobian[4]) > 0.5){
+              weight[i_weight]=10.;     // rot y
           }else if(fabs(jointJacobian[5]) > 0.5){ // rot z
               weight[i_weight]=10.;
           }else{ // prismatic or rot x
@@ -365,29 +395,60 @@ namespace
           }
           i_weight++;
       }
-      hppDout(notice,"Weight vector in reference analysis, for limb : "<<limb->limb_->name());
+
+      //hppDout(notice,"Weight vector in reference analysis, for limb : "<<limb->limb_->name());
       hppDout(notice,""<<model::displayConfig(weight));    //AOrgen - comment it out!!
-      hpp::model::difference (device, conf, device->currentConfiguration(), diff);
-      hppDout(notice,"Reference config in analysis : "<<model::displayConfig(device->currentConfiguration()));
+      //ConfigurationPtr_t trotRefConfig = problemSolver()->initConfig();
+      //const model::JointPtr_t effectorForPos = limb->effector_;
+
+      //fcl::Vec3f ComputeEffectorPosition(limb, effectorForPos);
+      //hppDout(notice, "effector position CHECK!! :" << ComputeEffectorPosition);
+
+      //hppDout(notice, "torso height: " << (norRefConf[2]));
+      //fcl::Vec3f pos(sample.effectorPosition_);
+      //hppDout(notice, "effector pos 1: " << pos);
+      //hppDout(notice, "effector pos 2: " << sample.effectorPosition_);
+      //hppDout(notice, "limb frame pos: "<< sample.effectorPositionInLimbFrame_);
+      //hppDout(notice, "TRUE eff pos: "<< effectorPos);
+      //hppDout(notice, "step size: " << (norRefConf[2] + sample.effectorPosition_[2]));
+/*
+      if ((norRefConf[2] + sample.effectorPosition_[2]) > 0.1){  //if limb higher than 10 cm compare it with OO config!
+          Configuration_t config_O_ref = fullBody->get_OO_RefConfig();
+          Configuration_t nor_OO_ref = convertPosAngle(config_O_ref);
+
+          hppDout(notice, "OO config without nor: " << config_O_ref);
+          hppDout(notice, "OO config WITH nor: " << nor_OO_ref);
+
+          hpp::model::difference (device, norSampleConf, nor_OO_ref, diff);  // compare with OO config!!
+      }
+      else{
+*/
+      hpp::model::difference (device, norSampleConf, norRefConf, diff);
+      //}
+      //hppDout(notice,"Reference config in analysis CHECK!: "<<model::displayConfig(device->currentConfiguration()));
       // the difference vector depend on the index in the velocity vector, not in the configuration
       // we only sum for the index of the current limb
       //hppDout(notice,"ref config rank: "<<cit->second->limb_->rankInVelocity()<<" ; "<<cit->second->effector_->rankInVelocity());
+
       hppDout(notice,"diff array :" << diff);
       hppDout(notice,"retrieved configuration from sample: " << conf);
-      hppDout(notice,"retrieved config from sample(changed): " << sample.configuration_);
+
+      //hppDout(notice,"retrieved config from sample(changed): " << sample.configuration_);
       for (size_t i = limb->limb_->rankInVelocity() ; i <= limb->effector_->rankInVelocity() ; ++i){
         distance += (diff[i]*diff[i])*weight[i-limb->limb_->rankInVelocity()];
       }
       // This is an heuristic and not a cost, a null distance is the best result
       // TODO : replace hardcoded value with the real max
       // but it increase computation time, and the values will be normalized after anyways ..
+
       hppDout(notice,"distance to ref = "<<sqrt(distance));
+
       if(sqrt(distance)>=100){
         hppDout(error,"WARNING : max distance to config not big enough");
       }
-      return 100-(sqrt(distance));
+      hppDout(notice, "heuristic return value: " << 100.0-(sqrt(distance)));
+      return 100.0-(sqrt(distance));
     }
-
 }
 
 
